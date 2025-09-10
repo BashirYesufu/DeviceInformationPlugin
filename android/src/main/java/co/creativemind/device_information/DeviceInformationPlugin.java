@@ -5,32 +5,22 @@ import android.annotation.SuppressLint;
 import android.app.Activity;
 import android.content.Context;
 import android.content.pm.PackageManager;
-import android.media.MediaDrm;
 import android.os.Build;
 import android.telephony.TelephonyManager;
 
 import androidx.annotation.NonNull;
-import androidx.annotation.Nullable;
-import androidx.annotation.RequiresApi;
 import androidx.core.content.ContextCompat;
 
 import java.util.Arrays;
-import java.util.UUID;
 
 import io.flutter.embedding.engine.plugins.FlutterPlugin;
 import io.flutter.embedding.engine.plugins.activity.ActivityAware;
 import io.flutter.embedding.engine.plugins.activity.ActivityPluginBinding;
 import io.flutter.plugin.common.MethodCall;
 import io.flutter.plugin.common.MethodChannel;
-//import io.flutter.plugin.common.MethodChannel.MethodCallHandler;
-import io.flutter.plugin.common.MethodChannel.Result;
 
 /** DeviceInformationPlugin */
-public class DeviceInformationPlugin implements FlutterPlugin, MethodCallHandler, ActivityAware {
-  /// The MethodChannel that will the communication between Flutter and native Android
-  ///
-  /// This local reference serves to register the plugin with the Flutter Engine and unregister it
-  /// when the Flutter Engine is detached from the Activity
+public class DeviceInformationPlugin implements FlutterPlugin, MethodChannel.MethodCallHandler, ActivityAware {
   private MethodChannel channel;
   private Activity activity;
 
@@ -47,7 +37,7 @@ public class DeviceInformationPlugin implements FlutterPlugin, MethodCallHandler
   }
 
   @Override
-  public void onMethodCall(@NonNull MethodCall call, @NonNull Result result) {
+  public void onMethodCall(@NonNull MethodCall call, @NonNull MethodChannel.Result result) {
     switch (call.method) {
       case "getPlatformVersion":
         result.success("Android " + Build.VERSION.RELEASE);
@@ -88,7 +78,7 @@ public class DeviceInformationPlugin implements FlutterPlugin, MethodCallHandler
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
           result.success(Arrays.toString(Build.SUPPORTED_ABIS));
         } else {
-          result.success(Build.CPU_ABI);
+          result.success(Build.CPU_ABI); // Deprecated, but safe fallback
         }
         break;
 
@@ -111,41 +101,20 @@ public class DeviceInformationPlugin implements FlutterPlugin, MethodCallHandler
     if (ContextCompat.checkSelfPermission(activity, Manifest.permission.READ_PHONE_STATE)
             != PackageManager.PERMISSION_GRANTED) {
       return Manifest.permission.READ_PHONE_STATE;
-    } else {
-      if (Build.VERSION.SDK_INT > Build.VERSION_CODES.P) {
-        return getDeviceUniqueID();
-      } else if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-        if (telephonyManager != null && telephonyManager.getImei() != null) {
-          return telephonyManager.getImei();
-        }
-      } else {
-        if (telephonyManager != null && telephonyManager.getDeviceId() != null) {
-          return telephonyManager.getDeviceId();
-        }
-      }
     }
-    return "";
-  }
 
-  @RequiresApi(api = Build.VERSION_CODES.JELLY_BEAN_MR2)
-  @Nullable
-  private String getDeviceUniqueID() {
-    UUID wideVineUuid = new UUID(-0x121074568629b532L, -0x5c37d8232ae2de13L);
     try {
-      MediaDrm wvDrm = new MediaDrm(wideVineUuid);
-      byte[] wideVineId = wvDrm.getPropertyByteArray(MediaDrm.PROPERTY_DEVICE_UNIQUE_ID);
-      String str = Arrays.toString(wideVineId)
-              .replaceAll("\\[", "")
-              .replaceAll("]", "")
-              .replaceAll(",", "")
-              .replaceAll("-", "")
-              .replaceAll(" ", "");
-      return str.length() > 15 ? str.substring(0, 15) : str;
+      if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+        return telephonyManager != null ? telephonyManager.getImei() : "";
+      } else {
+        return telephonyManager != null ? telephonyManager.getDeviceId() : "";
+      }
     } catch (Exception e) {
       return "";
     }
   }
 
+  // ActivityAware methods
   @Override
   public void onAttachedToActivity(@NonNull ActivityPluginBinding binding) {
     this.activity = binding.getActivity();
