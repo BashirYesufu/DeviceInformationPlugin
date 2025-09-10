@@ -1,4 +1,4 @@
-package com.jaiz.mobiletoken
+package co.creativemind.device_information;
 
 import io.flutter.embedding.android.FlutterFragmentActivity
 import io.flutter.embedding.engine.FlutterEngine
